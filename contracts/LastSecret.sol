@@ -79,7 +79,7 @@ contract LastSecret is OwnableUpgradeable {
         require(digest.recover(signature) == owner(), "Invalid signature");
     }
 
-    modifier activeSignature(uint256 expiresAt) {
+    modifier validSignature(uint256 expiresAt) {
         require(block.timestamp < expiresAt, "Expired signature");
         _;
     }
@@ -89,7 +89,7 @@ contract LastSecret is OwnableUpgradeable {
         uint256 expiresAt,
         bytes32 salt,
         bytes memory signature
-    ) external activeSignature(expiresAt) {
+    ) external validSignature(expiresAt) {
         bytes32 userHash = hashUser(
             User({user: msg.sender, expiresAt: expiresAt})
         );
@@ -105,7 +105,7 @@ contract LastSecret is OwnableUpgradeable {
         uint256 expiresAt,
         bytes32 salt,
         bytes memory signature
-    ) external view activeSignature(expiresAt) returns (uint256) {
+    ) external view validSignature(expiresAt) returns (uint256) {
         bytes32 userHash = hashUser(
             User({user: msg.sender, expiresAt: expiresAt})
         );
