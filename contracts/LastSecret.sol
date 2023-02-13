@@ -100,4 +100,18 @@ contract LastSecret is OwnableUpgradeable {
 
         emit SecretChanged(msg.sender, block.timestamp);
     }
+
+    function getSecretWithSignature(
+        uint256 expiresAt,
+        bytes32 salt,
+        bytes memory signature
+    ) external view activeSignature(expiresAt) returns (uint256) {
+        bytes32 userHash = hashUser(
+            User({user: msg.sender, expiresAt: expiresAt})
+        );
+
+        verifySignature(userHash, salt, signature);
+
+        return secret;
+    }
 }
