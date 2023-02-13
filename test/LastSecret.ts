@@ -72,6 +72,7 @@ describe('LastSecret', function () {
         accounts.path + `/${0}`
       );
 
+      // Sign the EIP signature with ethers.Wallet
       const { signature, salt } = await signUser(
         31337,
         contract.address,
@@ -80,6 +81,7 @@ describe('LastSecret', function () {
         wallet
       );
 
+      // Sign the EIP-712 signature with Metamask lib
       // const { signature, salt } = await signUserV2(
       //   31337,
       //   contract.address,
@@ -94,7 +96,10 @@ describe('LastSecret', function () {
         .connect(sam)
         .setSecretWithSignature(2, oneHourLater, salt, signature);
 
-      let secret = await contract.connect(owner).getSecret();
+      let secret = await contract
+        .connect(sam)
+        .getSecretWithSignature(oneHourLater, salt, signature);
+
       expect(secret).to.equal(2);
     });
   });
