@@ -6,10 +6,9 @@ export const signUser = async (
   contractAddress: string,
   userAddress: string,
   expiresAt: number,
+  salt: Buffer,
   signer: Wallet
 ) => {
-  const salt = ethers.utils.randomBytes(32);
-
   const domain = {
     name: 'LastSecret',
     version: '1',
@@ -30,9 +29,7 @@ export const signUser = async (
     expiresAt: expiresAt,
   };
 
-  const signature = await signer._signTypedData(domain, types, data);
-
-  return { signature, salt };
+  return await signer._signTypedData(domain, types, data);
 };
 
 export const signUserV2 = (
@@ -40,10 +37,9 @@ export const signUserV2 = (
   contractAddress: string,
   userAddress: string,
   expiresAt: number,
+  salt: Buffer,
   signer: Wallet
 ) => {
-  const salt = ethers.utils.randomBytes(32);
-
   const types = {
     EIP712Domain: [
       { name: 'name', type: 'string' },
@@ -78,7 +74,7 @@ export const signUserV2 = (
     'hex'
   );
 
-  const signature = signTypedData({
+  return signTypedData({
     privateKey,
     data: {
       types: types,
@@ -88,6 +84,4 @@ export const signUserV2 = (
     },
     version: SignTypedDataVersion.V4,
   });
-
-  return { signature, salt };
 };
