@@ -3,17 +3,29 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-import "hardhat/console.sol";
-
 contract LastSecret is OwnableUpgradeable {
     using ECDSA for bytes32;
 
     uint private secret;
 
-    mapping(address => uint256) public users;
-
     event SecretChanged(address from, uint256 time);
 
+    // This map is to store valid users, for valid user,
+    // the bool value need to be true
+    mapping(address => bool) public users;
+
+    // The Domain structure defines the properties
+    // of the domain that needs to be validated
+    struct Domain {
+        string name;
+        string version;
+        uint256 chainId;
+        address verifyingContract;
+        bytes32 salt;
+    }
+
+    // The User structure defines the data to be validated
+    // in the signature
     struct User {
         address user;
         uint256 expiresAt;
@@ -21,11 +33,14 @@ contract LastSecret is OwnableUpgradeable {
 
     string private constant EIP712_DOMAIN_NAME = "LastSecret";
     string private constant EIP712_DOMAIN_VERSION = "1";
+
+    // This is the type hash of the EIP712 domain structure
     bytes32 private constant EIP712_DOMAIN_TYPE_HASH =
         keccak256(
             "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)"
         );
 
+    // This is the type hash of the User structure
     bytes32 private constant USER_TYPE_HASH =
         keccak256("User(address user,uint256 expiresAt)");
 
@@ -34,7 +49,7 @@ contract LastSecret is OwnableUpgradeable {
         secret = 0;
     }
 
-    function setUserEnabled(address user, uint enabled) external onlyOwner {
+    function setUserEnabled(address user, bool enabled) external onlyOwner {
         users[user] = enabled;
     }
 
@@ -47,13 +62,30 @@ contract LastSecret is OwnableUpgradeable {
         return secret;
     }
 
-    function hashUser(User memory user) private view returns (bytes32) {
-        uint256 enabled = users[user.user];
-        require(enabled > 0, "Invalid user");
+    function hashDomain(Domain memory domain) private pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    EIP712_DOMAIN_TYPE_HASH,
+                    keccak256(bytes(domain.name)),
+                    keccak256(bytes(domain.version)),
+                    domain.chainId,
+                    domain.verifyingContract,
+                    domain.salt
+                )
+            );
+    }
 
+    function hashUser(User memory user) private pure returns (bytes32) {
         return keccak256(abi.encode(USER_TYPE_HASH, user.user, user.expiresAt));
     }
 
+    /**
+     * Verify the EIP 712 signature
+     * @param messageHash The message hash for EIP 712 structure
+     * @param salt The salt for the EIP 712 Domain
+     * @param signature The signature to be verified
+     */
     function verifySignature(
         bytes32 messageHash,
         bytes32 salt,
@@ -61,22 +93,29 @@ contract LastSecret is OwnableUpgradeable {
     ) private view {
         uint256 chainId = block.chainid;
         address verifyingContract = address(this);
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                EIP712_DOMAIN_TYPE_HASH,
-                keccak256(bytes(EIP712_DOMAIN_NAME)),
-                keccak256(bytes(EIP712_DOMAIN_VERSION)),
-                chainId,
-                verifyingContract,
-                salt
-            )
+        bytes32 domainHash = hashDomain(
+            Domain({
+                name: EIP712_DOMAIN_NAME,
+                version: EIP712_DOMAIN_VERSION,
+                chainId: chainId,
+                verifyingContract: verifyingContract,
+                salt: salt
+            })
         );
 
+        // Calculate the hash according to the given domain and message hash
         bytes32 digest = keccak256(
-            abi.encodePacked("\x19\x01", domainSeparator, messageHash)
+            abi.encodePacked("\x19\x01", domainHash, messageHash)
         );
 
+        // Use ECDSA to recover the address from the signature
+        // and compare it with the owner
         require(digest.recover(signature) == owner(), "Invalid signature");
+    }
+
+    modifier validUser() {
+        require(users[msg.sender], "Invalid user");
+        _;
     }
 
     modifier validSignature(uint256 expiresAt) {
@@ -89,7 +128,7 @@ contract LastSecret is OwnableUpgradeable {
         uint256 expiresAt,
         bytes32 salt,
         bytes memory signature
-    ) external validSignature(expiresAt) {
+    ) external validUser validSignature(expiresAt) {
         bytes32 userHash = hashUser(
             User({user: msg.sender, expiresAt: expiresAt})
         );
@@ -105,7 +144,7 @@ contract LastSecret is OwnableUpgradeable {
         uint256 expiresAt,
         bytes32 salt,
         bytes memory signature
-    ) external view validSignature(expiresAt) returns (uint256) {
+    ) external view validUser validSignature(expiresAt) returns (uint256) {
         bytes32 userHash = hashUser(
             User({user: msg.sender, expiresAt: expiresAt})
         );

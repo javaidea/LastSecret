@@ -1,4 +1,4 @@
-import { ethers, Wallet } from 'ethers';
+import { Wallet } from 'ethers';
 import { signTypedData, SignTypedDataVersion } from '@metamask/eth-sig-util';
 
 export const signUser = async (
