@@ -1,6 +1,4 @@
-import { LastSecret } from './../typechain-types/contracts/LastSecret';
 import { time, loadFixture } from '@nomicfoundation/hardhat-network-helpers';
-import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs';
 import { Wallet } from 'ethers';
 import { expect } from 'chai';
 import { config, ethers } from 'hardhat';
@@ -10,7 +8,6 @@ describe('LastSecret', function () {
   async function deployLastSecret() {
     const [owner, sam, bob] = await ethers.getSigners();
 
-    // console.log('Provider : ', owner.provider);
     const chainId = 31337;
 
     const LastSecret = await ethers.getContractFactory('LastSecret');
@@ -60,11 +57,11 @@ describe('LastSecret', function () {
         deployLastSecret
       );
 
-      await contract.connect(owner).setUserEnabled(sam.address, 1);
+      await contract.connect(owner).setUserEnabled(sam.address, true);
 
       const enabled = await contract.users(sam.address);
 
-      expect(enabled).to.gt(0);
+      expect(enabled).to.equal(true);
 
       const now = Math.floor(new Date().getTime() / 1000);
       const oneHourLater = now + 60 * 60;
@@ -77,8 +74,8 @@ describe('LastSecret', function () {
 
       const salt = Buffer.from(ethers.utils.randomBytes(32));
 
-      // Sign the EIP signature with ethers.Wallet
-      const signature = await signUser(
+      // Sign the EIP-712 signature with Metamask lib
+      const signature = signUserV2(
         chainId,
         contract.address,
         sam.address,
@@ -86,16 +83,6 @@ describe('LastSecret', function () {
         salt,
         wallet
       );
-
-      // Sign the EIP-712 signature with Metamask lib
-      // const signature = signUserV2(
-      //   chainId,
-      //   contract.address,
-      //   sam.address,
-      //   oneHourLater,
-      //   salt,
-      //   wallet
-      // );
 
       await contract
         .connect(sam)
@@ -124,11 +111,11 @@ describe('LastSecret', function () {
         deployLastSecret
       );
 
-      await contract.connect(owner).setUserEnabled(sam.address, 1);
+      await contract.connect(owner).setUserEnabled(sam.address, true);
 
       const enabled = await contract.users(sam.address);
 
-      expect(enabled).to.gt(0);
+      expect(enabled).to.equal(true);
 
       const now = Math.floor(new Date().getTime() / 1000);
       const oneHourLater = now + 60 * 60;
