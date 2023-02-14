@@ -1,36 +1,5 @@
-import { ethers, Wallet } from 'ethers';
+import { Wallet } from 'ethers';
 import { signTypedData, SignTypedDataVersion } from '@metamask/eth-sig-util';
-
-export const signUser = async (
-  chainId: number,
-  contractAddress: string,
-  userAddress: string,
-  expiresAt: number,
-  salt: Buffer,
-  signer: Wallet
-) => {
-  const domain = {
-    name: 'LastSecret',
-    version: '1',
-    chainId: chainId,
-    verifyingContract: contractAddress,
-    salt,
-  };
-
-  const types = {
-    User: [
-      { name: 'user', type: 'address' },
-      { name: 'expiresAt', type: 'uint256' },
-    ],
-  };
-
-  const data = {
-    user: userAddress,
-    expiresAt: expiresAt,
-  };
-
-  return await signer._signTypedData(domain, types, data);
-};
 
 export const signUserV2 = (
   contractAddress: string,
@@ -43,7 +12,7 @@ export const signUserV2 = (
       { name: 'name', type: 'string' },
       { name: 'version', type: 'string' },
       { name: 'verifyingContract', type: 'address' },
-      { name: 'contractVersion', type: 'uint256' },
+      { name: 'owner', type: 'string' },
     ],
     User: [
       { name: 'user', type: 'address' },
@@ -53,9 +22,9 @@ export const signUserV2 = (
 
   const domain = {
     name: 'LastSecret',
-    version: '1',
+    version: '2',
     verifyingContract: contractAddress,
-    contractVersion: 3,
+    owner: 'javaidea',
   };
 
   const data = {

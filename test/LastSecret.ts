@@ -1,16 +1,19 @@
-import { LastSecret } from './../typechain-types/contracts/LastSecret';
 import { time, loadFixture } from '@nomicfoundation/hardhat-network-helpers';
-import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs';
 import { Wallet } from 'ethers';
 import { expect } from 'chai';
 import { config, ethers } from 'hardhat';
-import { signUser, signUserV2 } from './utils';
+import { signUserV2 } from './utils';
 
 describe('LastSecret', function () {
   async function deployLastSecret() {
     const [owner, sam, bob] = await ethers.getSigners();
 
-    // console.log('Provider : ', owner.provider);
+    const accounts: any = config.networks.hardhat.accounts;
+    const ownerWallet = Wallet.fromMnemonic(
+      accounts.mnemonic,
+      accounts.path + `/${0}`
+    );
+
     const chainId = 31337;
 
     const LastSecret = await ethers.getContractFactory('LastSecret');
@@ -18,7 +21,7 @@ describe('LastSecret', function () {
     await contract.deployed();
     await contract.initialize();
 
-    return { contract, owner, sam, bob, chainId };
+    return { contract, owner, ownerWallet, sam, bob, chainId };
   }
 
   describe('Deployment', function () {
@@ -56,31 +59,25 @@ describe('LastSecret', function () {
 
   describe('Should set secret by user', function () {
     it('Should set secret by user', async () => {
-      const { contract, owner, sam, chainId } = await loadFixture(
+      const { contract, owner, ownerWallet, sam } = await loadFixture(
         deployLastSecret
       );
 
-      await contract.connect(owner).setUserEnabled(sam.address, 1);
+      await contract.connect(owner).setUserEnabled(sam.address, true);
 
       const enabled = await contract.users(sam.address);
 
-      expect(enabled).to.gt(0);
+      expect(enabled).to.equal(true);
 
       const now = Math.floor(new Date().getTime() / 1000);
       const oneHourLater = now + 60 * 60;
-
-      const accounts: any = config.networks.hardhat.accounts;
-      const wallet = Wallet.fromMnemonic(
-        accounts.mnemonic,
-        accounts.path + `/${0}`
-      );
 
       // Sign the EIP-712 signature with Metamask lib
       const signature = signUserV2(
         contract.address,
         sam.address,
         oneHourLater,
-        wallet
+        ownerWallet
       );
 
       await contract
@@ -104,35 +101,24 @@ describe('LastSecret', function () {
 
   describe('Should revert with wrong user or signature', function () {
     it('Should revert with signature of wrong user', async () => {
-      const { contract, owner, sam, bob, chainId } = await loadFixture(
+      const { contract, owner, ownerWallet, sam, bob } = await loadFixture(
         deployLastSecret
       );
 
-      await contract.connect(owner).setUserEnabled(sam.address, 1);
+      await contract.connect(owner).setUserEnabled(sam.address, true);
 
       const enabled = await contract.users(sam.address);
 
-      expect(enabled).to.gt(0);
+      expect(enabled).to.equal(true);
 
       const now = Math.floor(new Date().getTime() / 1000);
       const oneHourLater = now + 60 * 60;
 
-      const accounts: any = config.networks.hardhat.accounts;
-      const wallet = Wallet.fromMnemonic(
-        accounts.mnemonic,
-        accounts.path + `/${0}`
-      );
-
-      const salt = Buffer.from(ethers.utils.randomBytes(32));
-
-      // Sign the EIP signature with ethers.Wallet
-      const signature = await signUser(
-        chainId,
+      const signature = signUserV2(
         contract.address,
         bob.address,
         oneHourLater,
-        salt,
-        wallet
+        ownerWallet
       );
 
       // Bob is not enabled yet
