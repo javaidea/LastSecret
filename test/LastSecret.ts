@@ -10,12 +10,18 @@ describe('LastSecret', function () {
 
     const chainId = 31337;
 
+    const accounts: any = config.networks.hardhat.accounts;
+    const ownerWallet = Wallet.fromMnemonic(
+      accounts.mnemonic,
+      accounts.path + `/${0}`
+    );
+
     const LastSecret = await ethers.getContractFactory('LastSecret');
     const contract = await LastSecret.deploy();
     await contract.deployed();
     await contract.initialize();
 
-    return { contract, owner, sam, bob, chainId };
+    return { contract, owner, ownerWallet, sam, bob, chainId };
   }
 
   describe('Deployment', function () {
@@ -53,7 +59,7 @@ describe('LastSecret', function () {
 
   describe('Should set secret by user', function () {
     it('Should set secret by user', async () => {
-      const { contract, owner, sam, chainId } = await loadFixture(
+      const { contract, owner, ownerWallet, sam, chainId } = await loadFixture(
         deployLastSecret
       );
 
@@ -66,12 +72,6 @@ describe('LastSecret', function () {
       const now = Math.floor(new Date().getTime() / 1000);
       const oneHourLater = now + 60 * 60;
 
-      const accounts: any = config.networks.hardhat.accounts;
-      const wallet = Wallet.fromMnemonic(
-        accounts.mnemonic,
-        accounts.path + `/${0}`
-      );
-
       const salt = Buffer.from(ethers.utils.randomBytes(32));
 
       // Sign the EIP-712 signature with Metamask lib
@@ -81,7 +81,7 @@ describe('LastSecret', function () {
         sam.address,
         oneHourLater,
         salt,
-        wallet
+        ownerWallet
       );
 
       await contract
@@ -107,9 +107,8 @@ describe('LastSecret', function () {
 
   describe('Should revert with wrong user or signature', function () {
     it('Should revert with signature of wrong user', async () => {
-      const { contract, owner, sam, bob, chainId } = await loadFixture(
-        deployLastSecret
-      );
+      const { contract, owner, ownerWallet, sam, bob, chainId } =
+        await loadFixture(deployLastSecret);
 
       await contract.connect(owner).setUserEnabled(sam.address, true);
 
@@ -120,12 +119,6 @@ describe('LastSecret', function () {
       const now = Math.floor(new Date().getTime() / 1000);
       const oneHourLater = now + 60 * 60;
 
-      const accounts: any = config.networks.hardhat.accounts;
-      const wallet = Wallet.fromMnemonic(
-        accounts.mnemonic,
-        accounts.path + `/${0}`
-      );
-
       const salt = Buffer.from(ethers.utils.randomBytes(32));
 
       // Sign the EIP signature with ethers.Wallet
@@ -135,7 +128,7 @@ describe('LastSecret', function () {
         bob.address,
         oneHourLater,
         salt,
-        wallet
+        ownerWallet
       );
 
       // Bob is not enabled yet
