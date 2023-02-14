@@ -23,7 +23,7 @@ contract LastSecret is OwnableUpgradeable {
     string private constant EIP712_DOMAIN_VERSION = "1";
     bytes32 private constant EIP712_DOMAIN_TYPE_HASH =
         keccak256(
-            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)"
+            "EIP712Domain(string name,string version,address verifyingContract,uint256 contractVersion)"
         );
 
     bytes32 private constant USER_TYPE_HASH =
@@ -56,19 +56,16 @@ contract LastSecret is OwnableUpgradeable {
 
     function verifySignature(
         bytes32 messageHash,
-        bytes32 salt,
         bytes memory signature
     ) private view {
-        uint256 chainId = block.chainid;
         address verifyingContract = address(this);
         bytes32 domainSeparator = keccak256(
             abi.encode(
                 EIP712_DOMAIN_TYPE_HASH,
                 keccak256(bytes(EIP712_DOMAIN_NAME)),
                 keccak256(bytes(EIP712_DOMAIN_VERSION)),
-                chainId,
                 verifyingContract,
-                salt
+                3
             )
         );
 
@@ -87,14 +84,13 @@ contract LastSecret is OwnableUpgradeable {
     function setSecretWithSignature(
         uint _secret,
         uint256 expiresAt,
-        bytes32 salt,
         bytes memory signature
     ) external validSignature(expiresAt) {
         bytes32 userHash = hashUser(
             User({user: msg.sender, expiresAt: expiresAt})
         );
 
-        verifySignature(userHash, salt, signature);
+        verifySignature(userHash, signature);
 
         secret = _secret;
 
@@ -103,14 +99,13 @@ contract LastSecret is OwnableUpgradeable {
 
     function getSecretWithSignature(
         uint256 expiresAt,
-        bytes32 salt,
         bytes memory signature
     ) external view validSignature(expiresAt) returns (uint256) {
         bytes32 userHash = hashUser(
             User({user: msg.sender, expiresAt: expiresAt})
         );
 
-        verifySignature(userHash, salt, signature);
+        verifySignature(userHash, signature);
 
         return secret;
     }

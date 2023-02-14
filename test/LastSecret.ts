@@ -75,35 +75,21 @@ describe('LastSecret', function () {
         accounts.path + `/${0}`
       );
 
-      const salt = Buffer.from(ethers.utils.randomBytes(32));
-
-      // Sign the EIP signature with ethers.Wallet
-      const signature = await signUser(
-        chainId,
+      // Sign the EIP-712 signature with Metamask lib
+      const signature = signUserV2(
         contract.address,
         sam.address,
         oneHourLater,
-        salt,
         wallet
       );
 
-      // Sign the EIP-712 signature with Metamask lib
-      // const signature = signUserV2(
-      //   chainId,
-      //   contract.address,
-      //   sam.address,
-      //   oneHourLater,
-      //   salt,
-      //   wallet
-      // );
-
       await contract
         .connect(sam)
-        .setSecretWithSignature(2, oneHourLater, salt, signature);
+        .setSecretWithSignature(2, oneHourLater, signature);
 
       let secret = await contract
         .connect(sam)
-        .getSecretWithSignature(oneHourLater, salt, signature);
+        .getSecretWithSignature(oneHourLater, signature);
 
       expect(secret).to.equal(2);
 
@@ -111,9 +97,7 @@ describe('LastSecret', function () {
       await time.increaseTo(oneHourLater + 2 * 60 * 60);
 
       await expect(
-        contract
-          .connect(sam)
-          .getSecretWithSignature(oneHourLater, salt, signature)
+        contract.connect(sam).getSecretWithSignature(oneHourLater, signature)
       ).to.be.revertedWith('Expired signature');
     });
   });
@@ -153,16 +137,12 @@ describe('LastSecret', function () {
 
       // Bob is not enabled yet
       await expect(
-        contract
-          .connect(bob)
-          .getSecretWithSignature(oneHourLater, salt, signature)
+        contract.connect(bob).getSecretWithSignature(oneHourLater, signature)
       ).to.be.revertedWith('Invalid user');
 
       // This is not Sam's signature
       await expect(
-        contract
-          .connect(sam)
-          .getSecretWithSignature(oneHourLater, salt, signature)
+        contract.connect(sam).getSecretWithSignature(oneHourLater, signature)
       ).to.be.revertedWith('Invalid signature');
     });
   });

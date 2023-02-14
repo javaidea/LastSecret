@@ -33,20 +33,17 @@ export const signUser = async (
 };
 
 export const signUserV2 = (
-  chainId: number,
   contractAddress: string,
   userAddress: string,
   expiresAt: number,
-  salt: Buffer,
   signer: Wallet
 ) => {
   const types = {
     EIP712Domain: [
       { name: 'name', type: 'string' },
       { name: 'version', type: 'string' },
-      { name: 'chainId', type: 'uint256' },
       { name: 'verifyingContract', type: 'address' },
-      { name: 'salt', type: 'bytes32' },
+      { name: 'contractVersion', type: 'uint256' },
     ],
     User: [
       { name: 'user', type: 'address' },
@@ -57,9 +54,8 @@ export const signUserV2 = (
   const domain = {
     name: 'LastSecret',
     version: '1',
-    chainId: chainId,
     verifyingContract: contractAddress,
-    salt,
+    contractVersion: 3,
   };
 
   const data = {
